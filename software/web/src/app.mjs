@@ -1504,7 +1504,6 @@ async function readProtectedSlix() {
 
 $('read-slix').onclick = () => readProtectedSlix();
 
-
 async function readTonie() {
   if (state.controller || !state.connected) {
     return;
