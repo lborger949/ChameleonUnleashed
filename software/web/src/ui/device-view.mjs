@@ -187,6 +187,7 @@ export function deviceViews({
     const prompt = !connected && !['checking', 'error'].includes(current);
     $('scanner').hidden = prompt;
     $('scan-modes').hidden = prompt;
+    $('tonie-actions').hidden = prompt;
     $('scan-connect').hidden = !prompt;
     $('scan-connect').dataset.state = current;
     $('scan-connect-glyph').innerHTML = $('connection-glyph').innerHTML;
