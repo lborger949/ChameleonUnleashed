@@ -34,13 +34,11 @@ jobs:
         uses: actions/configure-pages@v5
   firmware_pipeline:
     name: Build Firmware
-    needs: pages
     permissions:
       contents: read
     uses: ./.github/workflows/build_firmware.yml
     with:
       publish-builder: false
-      asset-base: ${{ needs.pages.outputs.url }}
       run-tests: ${{ github.ref != 'refs/heads/develop' || inputs.run-tests == true }}
       browser-tests: ${{ startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.run-tests == true) }}
   client_pipeline:
