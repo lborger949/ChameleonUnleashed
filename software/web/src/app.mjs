@@ -87,6 +87,8 @@ let pendingMct;
 let scanTechnology = 'nfc';
 const DRAFT = 'chameleon-studio-v1';
 const DICTIONARY = 'chameleon-dictionary-v1';
+// NXP ICODE SLIX-L privacy password used by every Toniebox figure, in RF order.
+const TONIE_PRIVACY_PASSWORD = [0x7f, 0xfd, 0x6e, 0x5b];
 
 function controls() {
   studioControls();
@@ -1501,6 +1503,42 @@ async function readProtectedSlix() {
 }
 
 $('read-slix').onclick = () => readProtectedSlix();
+
+
+async function readTonie() {
+  if (state.controller || !state.connected) {
+    return;
+  }
+  if (!(await canReplace())) {
+    return;
+  }
+  let draft;
+  try {
+    draft = blankNfcv(1500);
+  } catch (error) {
+    notify(error.message, true);
+    return;
+  }
+  draft.name = 'Tonie';
+  openDocument(draft, 'Hold the Tonie against the antenna…');
+  await readHfMemory([...TONIE_PRIVACY_PASSWORD]);
+  const doc = state.document;
+  if (doc?.card?.protocol !== 'nfc_v' || !doc.capture?.complete) {
+    return;
+  }
+  if (needsHfDefaults(doc)) {
+    applyHfDefaults(doc);
+  }
+  if (Array.isArray(doc.emulator?.secrets) && doc.emulator.secrets.length >= 4) {
+    doc.emulator.secrets.splice(0, 4, ...TONIE_PRIVACY_PASSWORD);
+    clearFeedback();
+    render();
+    saveDraft();
+    notify('Tonie read; privacy password stored for emulation');
+  }
+}
+
+$('read-tonie').onclick = () => readTonie().catch((error) => notify(error.message, true));
 
 async function readDocument() {
   if (!state.document || state.controller || !state.connected) {
