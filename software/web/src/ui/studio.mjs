@@ -215,6 +215,7 @@ export function studioView(state, { saveDraft, renderRecents, onLfFormat }) {
     $('read-slix').disabled = !connected || busy;
     $('read-slix').hidden = doc?.card?.protocol !== 'nfc_v' || doc.card.uid.slice(0, 3).join() !== '224,4,3';
     $('scan').disabled = !connected || busy;
+    $('read-tonie').disabled = !connected || busy;
     $('change-uid').hidden = !isClassic(doc) || doc.card?.uid?.length !== 4;
     $('change-uid').disabled = !connected || busy;
     $('repair-tag').hidden = !isClassic(doc);
