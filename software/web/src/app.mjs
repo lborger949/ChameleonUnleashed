@@ -90,7 +90,7 @@ const DICTIONARY = 'chameleon-dictionary-v1';
 // NXP ICODE SLIX-L privacy password used by every Toniebox figure, in RF order.
 const TONIE_PRIVACY_PASSWORD = [0x7f, 0xfd, 0x6e, 0x5b];
 // Keep retrying the unlock so the figure can just be held against the antenna.
-const TONIE_SCAN_ATTEMPTS = 60;
+const TONIE_SCAN_ATTEMPTS = 100;
 const TONIE_SCAN_INTERVAL_MS = 150;
 
 function controls() {
@@ -1572,7 +1572,7 @@ async function readTonie() {
             return;
           }
           // 1 no tag, 2 comms glitch, 6 unlock not verified: all transient here.
-          if (![1, 2, 6].includes(error.status)) {
+          if (![1, 2, 3, 6].includes(error.status)) {
             throw error;
           }
           if (error.status === 6) {
