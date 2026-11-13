@@ -89,6 +89,9 @@ const DRAFT = 'chameleon-studio-v1';
 const DICTIONARY = 'chameleon-dictionary-v1';
 // NXP ICODE SLIX-L privacy password used by every Toniebox figure, in RF order.
 const TONIE_PRIVACY_PASSWORD = [0x7f, 0xfd, 0x6e, 0x5b];
+// Keep retrying the unlock so the figure can just be held against the antenna.
+const TONIE_SCAN_ATTEMPTS = 60;
+const TONIE_SCAN_INTERVAL_MS = 150;
 
 function controls() {
   studioControls();
@@ -1504,6 +1507,23 @@ async function readProtectedSlix() {
 
 $('read-slix').onclick = () => readProtectedSlix();
 
+// Resolves after the delay, or immediately when the read is stopped.
+function tonieDelay(ms, signal) {
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    const stop = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    signal?.addEventListener('abort', stop, { once: true });
+  });
+}
+
+// One-tap Tonie capture: start from an unbound SLIX-L draft so the read binds to
+// the presented figure even while it is still privacy-locked and silent to
+// inventory, retry the known-password unlock until the figure is held against
+// the antenna (or Stop is pressed), then keep that password in the emulator
+// secrets so the saved slot can play back to a Toniebox.
 async function readTonie() {
   if (state.controller || !state.connected) {
     return;
@@ -1520,7 +1540,63 @@ async function readTonie() {
   }
   draft.name = 'Tonie';
   openDocument(draft, 'Hold the Tonie against the antenna…');
-  await readHfMemory([...TONIE_PRIVACY_PASSWORD]);
+  let read = false;
+  let sawTag = false;
+  await workspaceTask(async (signal) => {
+    startReadTime();
+    try {
+      for (let attempt = 0; attempt < TONIE_SCAN_ATTEMPTS && !signal.aborted; attempt++) {
+        // Re-arm a fresh unbound draft if a prior attempt bound but could not dump.
+        if (!state.document?.unbound) {
+          const retry = blankNfcv(1500);
+          retry.name = 'Tonie';
+          state.document = retry;
+        }
+        const device = new Device(signal);
+        try {
+          await withDevice(device, async () => {
+            await device.reserve();
+            device.nfcvPassword = [...TONIE_PRIVACY_PASSWORD];
+            await readHf(device, state.document, updateHf);
+          });
+          if (state.document?.capture?.complete) {
+            read = true;
+            return;
+          }
+          // A block glitched: the figure is present, so retry the whole read.
+          sawTag = true;
+          $('status').textContent = 'Partial read — hold the Tonie flat and still…';
+          await tonieDelay(TONIE_SCAN_INTERVAL_MS, signal);
+        } catch (error) {
+          if (signal.aborted) {
+            return;
+          }
+          // 1 no tag, 2 comms glitch, 6 unlock not verified: all transient here.
+          if (![1, 2, 6].includes(error.status)) {
+            throw error;
+          }
+          if (error.status === 6) {
+            sawTag = true;
+          }
+          $('status').textContent = 'Searching for a Tonie — keep it on the antenna…';
+          await tonieDelay(TONIE_SCAN_INTERVAL_MS, signal);
+        }
+      }
+      if (!signal.aborted) {
+        notify(
+          sawTag
+            ? 'Tonie found but not fully read. Hold it flat and steady, then tap Read Tonie again.'
+            : 'No Tonie detected. Hold the figure flat on the antenna and tap Read Tonie again.',
+          true
+        );
+      }
+    } finally {
+      finishReadTime();
+    }
+  });
+  if (!read) {
+    return;
+  }
   const doc = state.document;
   if (doc?.card?.protocol !== 'nfc_v' || !doc.capture?.complete) {
     return;
