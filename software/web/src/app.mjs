@@ -1574,8 +1574,7 @@ async function readTonie() {
           }
           // 1 no tag, 2 comms, 3 CRC, 6 unlock unverified, or a garbled
           // inventory: all transient on marginal NFC-V coupling, so retry.
-          const transient =
-            [1, 2, 3, 6].includes(error.status) || /Invalid NFC-V/i.test(error.message);
+          const transient = [1, 2, 3, 6].includes(error.status) || /Invalid NFC-V/i.test(error.message);
           if (!transient) {
             throw error;
           }
