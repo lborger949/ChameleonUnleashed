@@ -1542,6 +1542,7 @@ async function readTonie() {
   openDocument(draft, 'Hold the Tonie against the antenna…');
   let read = false;
   let sawTag = false;
+  let lastStatus;
   await workspaceTask(async (signal) => {
     startReadTime();
     try {
@@ -1587,10 +1588,11 @@ async function readTonie() {
         }
       }
       if (!signal.aborted) {
+        const hint = lastStatus === undefined ? '' : ` (last status ${lastStatus})`;
         notify(
-          sawTag
+          (sawTag
             ? 'Tonie found but not fully read. Hold it flat and steady, then tap Read Tonie again.'
-            : 'No Tonie detected. Hold the figure flat on the antenna and tap Read Tonie again.',
+            : 'No Tonie detected. Hold the figure flat on the antenna and tap Read Tonie again.') + hint,
           true
         );
       }
